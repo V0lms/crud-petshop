@@ -1,101 +1,193 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+
+type Pet = {
+  id: number;
+  name: string;
+  category: string;
+  photoUrls: string;
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [newPet, setNewPet] = useState({ name: '', status: 'available', photoUrls: '' });
+  const [newNames, setNewNames] = useState<Record<number, string>>({});
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const api = axios.create({
+    baseURL: 'https://petstore.swagger.io/v2',
+    headers: {
+      'api_key': 'special-key',
+      'Content-Type': 'application/json',
+    }
+  });
+
+  useEffect(() => {
+    fetchPets();
+  }, []);
+
+  const fetchPets = async (status?: string) => {
+    try {
+      const { data } = await api.get('/pet/findByStatus', {
+        params: { status: (status || 'available') }
+      });
+      const uniquePets = Array.from(new Map(data.map((pet: Pet) => [pet.id, pet])).values());
+      setPets(uniquePets);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch pets');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addPet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post('/pet', {
+        name: newPet.name,
+        photoUrls: newPet.photoUrls || "",
+        status: newPet.status,
+      });
+      await fetchPets();
+      setNewPet({ name: '', status: 'available', photoUrls: '' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add pet');
+    }
+  };
+
+  const updatePet = async (petId: number) => {
+    try {
+      const newName = newNames[petId];
+      if (!newName) return;
+
+      const pet = pets.find(p => p.id === petId);
+      if (!pet) return;
+
+      await api.put('/pet', {
+        id: petId,
+        name: newName,
+        photoUrls: pet.photoUrls,
+        status: 'available',
+      });
+      await fetchPets();
+      setNewNames(prev => {
+        const updated = { ...prev };
+        delete updated[petId];
+        return updated;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update pet');
+    }
+  };
+
+  const deletePet = async (petId: number) => {
+    try {
+      await api.delete(`/pet/${petId}`);
+      await fetchPets();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete pet');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-xl">Loading pets...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-8">Petstore CRUD</h1>
+      <div className=' flex gap-2 p-4 h-[25%]'>
+        <button type="button" onClick={() => fetchPets('available')} className="h-[20%] w-[33%] bg-neutral-500 text-white rounded hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500">
+          Disponibles
+        </button>
+        <button type="button" onClick={() => fetchPets('pending')} className="h-[20%] w-[33%] bg-neutral-500 text-white rounded hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500">
+          Pendientes
+        </button>
+        <button type="button" onClick={() => fetchPets('sold')} className="h-[20%] w-[33%] bg-neutral-500 text-white rounded hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500">
+          Vendidos
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      )}
+
+      <form onSubmit={addPet} className="mb-8 p-6 bg-white rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4">Add New Pet</h2>
+        <div className="flex gap-4">
+          <input
+            type="text"
+            value={newPet.name}
+            onChange={(e) => setNewPet({ ...newPet, name: e.target.value })}
+            placeholder="Nombre"
+            className="flex-1 px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+            required
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <input
+            type="text"
+            value={newPet.photoUrls}
+            onChange={(e) => setNewPet({ ...newPet, photoUrls: e.target.value })}
+            placeholder="Foto URL"
+            className="flex-1 px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <button
+            type="submit"
+            className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            Add Pet
+          </button>
+        </div>
+      </form>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {pets.map((pet) => (
+          <div key={pet.id} className="p-4 bg-white rounded-lg shadow-md">
+            <div className="space-y-4">
+              <div className="aspect-video bg-gray-100 rounded overflow-hidden">
+                <img
+                  src={pet.photoUrls}
+                  alt={pet.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <h3 className="text-xl font-semibold">{pet.name}</h3>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newNames[pet.id] || ''}
+                    onChange={(e) => setNewNames(prev => ({ ...prev, [pet.id]: e.target.value }))}
+                    placeholder="New name"
+                    className="flex-1 px-3 py-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                  <button
+                    onClick={() => updatePet(pet.id)}
+                    className="px-4 py-2 bg-cyan-500 text-white rounded-r hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  >
+                    Update
+                  </button>
+                </div>
+                <button
+                  onClick={() => deletePet(pet.id)}
+                  className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
