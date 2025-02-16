@@ -30,9 +30,12 @@ export default function Home() {
   }, []);
 
   const fetchPets = async (status?: string) => {
+    if (!status) {
+      status =  'available';
+    }
     try {
       const { data } = await api.get('/pet/findByStatus', {
-        params: { status: (status || 'available') }
+        params: { status: (status) }
       });
       const uniquePets: any = Array.from(new Map(data.map((pet: Pet) => [pet.id, pet])).values());
       setPets(uniquePets);
@@ -48,8 +51,9 @@ export default function Home() {
     try {
       await api.post('/pet', {
         name: newPet.name,
-        photoUrls: newPet.photoUrls || "",
-        status: newPet.status,
+        photoUrls: [newPet.photoUrls] ,
+        status: 'available',
+        
       });
       await fetchPets();
       setNewPet({ name: '', status: 'available', photoUrls: '' });
