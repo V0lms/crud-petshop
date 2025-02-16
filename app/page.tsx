@@ -118,13 +118,7 @@ export default function Home() {
           Vendidos
         </button>
       </div>
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
+      
       <form onSubmit={addPet} className="mb-8 p-6 bg-white rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4">Add New Pet</h2>
         <div className="flex gap-4">
@@ -192,6 +186,11 @@ export default function Home() {
           </div>
         ))}
       </div>
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
     </div>
   );
 }
