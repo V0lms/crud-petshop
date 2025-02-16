@@ -34,7 +34,7 @@ export default function Home() {
       const { data } = await api.get('/pet/findByStatus', {
         params: { status: (status || 'available') }
       });
-      const uniquePets = Array.from(new Map(data.map((pet: Pet) => [pet.id, pet])).values());
+      const uniquePets: any = Array.from(new Map(data.map((pet: Pet) => [pet.id, pet])).values());
       setPets(uniquePets);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch pets');
